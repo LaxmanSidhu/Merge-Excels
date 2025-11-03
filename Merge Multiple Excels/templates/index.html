@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedspot QA Merger</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #fafafa; text-align: center; margin: 50px; }
+    .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: inline-block; }
+    input[type="file"] { margin: 20px 0; }
+    button { background: #007BFF; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 10px; }
+    button:hover { background: #0056b3; }
+    .success { color: green; margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>📊 Feedspot QA Excel Merger</h2>
+    <form action="/merge" method="post" enctype="multipart/form-data">
+      <input type="file" name="files" multiple required><br>
+      <button type="submit">Merge Files</button>
+    </form>
+
+    {% if success %}
+    <div class="success">✅ Files merged successfully!</div>
+    <div>
+      <a href="/download/excel"><button>Download Merged Excel</button></a>
+      <a href="/download/csv"><button>Download Merged CSV</button></a>
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>
