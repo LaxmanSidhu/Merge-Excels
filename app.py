@@ -27,60 +27,42 @@ def merge_files():
 
     all_dfs = []
     for file in uploaded_files:
-        df = clean_excel(file)
-        all_dfs.append(df)
+        try:
+            df = clean_excel(file)
+            all_dfs.append(df)
+        except Exception as e:
+            return f"Error processing {file.filename}: {str(e)}", 500
 
     merged_df = pd.concat(all_dfs, ignore_index=True)
 
-    # Store merged dataframe in session memory (not on disk)
-    # But since Render disables server sessions, we just hold it in memory for this request
-    # Instead, we regenerate file in memory when user clicks download
+    # Decide format based on button clicked
+    download_type = request.form.get('download_type')
 
-    # Convert to Excel in memory
-    excel_buffer = BytesIO()
-    merged_df.to_excel(excel_buffer, index=False)
-    excel_buffer.seek(0)
-
-    # Convert to CSV in memory
-    csv_buffer = StringIO()
-    merged_df.to_csv(csv_buffer, index=False)
-    csv_buffer.seek(0)
-
-    # Store in global variables temporarily (not disk)
-    app.config['MERGED_EXCEL'] = excel_buffer
-    app.config['MERGED_CSV'] = csv_buffer.getvalue()
-
-    return render_template('index.html', success=True)
-
-
-@app.route('/download/<filetype>')
-def download(filetype):
-    if filetype == "excel":
-        excel_buffer = app.config.get('MERGED_EXCEL')
-        if not excel_buffer:
-            return "⚠️ No merged Excel available yet!", 400
-        excel_buffer.seek(0)
+    if download_type == 'excel':
+        output = BytesIO()
+        merged_df.to_excel(output, index=False)
+        output.seek(0)
         return send_file(
-            excel_buffer,
+            output,
             as_attachment=True,
             download_name="merged_feedspot.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-    elif filetype == "csv":
-        csv_data = app.config.get('MERGED_CSV')
-        if not csv_data:
-            return "⚠️ No merged CSV available yet!", 400
+    elif download_type == 'csv':
+        output = StringIO()
+        merged_df.to_csv(output, index=False)
+        mem = BytesIO(output.getvalue().encode('utf-8'))
         return send_file(
-            BytesIO(csv_data.encode()),
+            mem,
             as_attachment=True,
             download_name="merged_feedspot.csv",
             mimetype="text/csv"
         )
 
     else:
-        return "Invalid file type!", 400
+        return "Invalid download type", 400
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
