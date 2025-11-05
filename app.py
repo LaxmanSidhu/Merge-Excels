@@ -3,6 +3,7 @@ import pandas as pd
 import os
 from io import BytesIO, StringIO
 import json
+from pandas import ExcelWriter
 
 app = Flask(__name__)
 
@@ -96,7 +97,8 @@ def merge_files():
 
     if download_type == 'excel':
         output = BytesIO()
-        merged_df.to_excel(output, index=False)
+        with ExcelWriter(output, engine='openpyxl') as writer:
+            merged_df.to_excel(writer, index=False, sheet_name='Merged_Data')
         output.seek(0)
         response = send_file(
             output,
