@@ -5,21 +5,175 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Feedspot QA Merger</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f7f8fa; text-align: center; margin-top: 60px; }
-    .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: inline-block; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f8fa;
+      text-align: center;
+      margin-top: 60px;
+    }
+
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      display: inline-block;
+      width: 400px;
+    }
+
     input[type="file"] { margin: 20px 0; }
-    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 10px; }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 10px;
+    }
+
     button:hover { background: #0056b3; }
+
+    #progress-container { display: none; margin-top: 20px; }
+
+    #progress-bar {
+      width: 0%;
+      height: 8px;
+      background: #28a745;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    #progress-text {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .dot-loader span {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin: 0 2px;
+      background-color: #28a745;
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+
+    .dot-loader span:nth-child(1) { animation-delay: -0.32s; }
+    .dot-loader span:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    #result {
+      margin-top: 25px;
+      text-align: left;
+      display: none;
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.5;
+      box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.1);
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>📊 Feedspot QA Excel Merger</h2>
-    <form action="/merge" method="post" enctype="multipart/form-data">
+
+    <form id="uploadForm" enctype="multipart/form-data">
       <input type="file" name="files" multiple required><br>
       <button type="submit" name="download_type" value="excel">Download Merged Excel</button>
       <button type="submit" name="download_type" value="csv">Download Merged CSV</button>
     </form>
+
+    <div id="progress-container">
+      <div id="progress-bar"></div>
+      <p id="progress-text">Processing...</p>
+    </div>
+
+    <div id="result"></div>
   </div>
+
+  <script>
+    const form = document.getElementById("uploadForm");
+    const progressContainer = document.getElementById("progress-container");
+    const progressBar = document.getElementById("progress-bar");
+    const progressText = document.getElementById("progress-text");
+    const resultBox = document.getElementById("result");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(form);
+      const downloadType = e.submitter.value;
+      formData.append("download_type", downloadType);
+
+      progressContainer.style.display = "block";
+      progressBar.style.width = "0%";
+      progressText.textContent = "Starting...";
+
+      // Fake progress animation
+      let progress = 0;
+      const fakeProgress = setInterval(() => {
+        if (progress < 70) {
+          progress += Math.random() * 10;
+        } else if (progress < 90) {
+          progress += Math.random() * 3;
+        } else if (progress < 97) {
+          progress += Math.random() * 1;
+        }
+        progressBar.style.width = `${Math.min(progress, 97)}%`;
+
+        if (progress < 90) {
+          progressText.textContent = "Processing files...";
+        } else if (!progressText.querySelector(".dot-loader")) {
+          progressText.innerHTML = `Finalizing merged file <span class="dot-loader"><span></span><span></span><span></span></span>`;
+        }
+      }, 300);
+
+      try {
+        const response = await fetch("/merge", { method: "POST", body: formData });
+        clearInterval(fakeProgress);
+        progressBar.style.width = "100%";
+        progressText.textContent = "Download ready ✅";
+
+        if (!response.ok) throw new Error(await response.text() || "Error merging files");
+
+        // Read blob + metadata
+        const blob = await response.blob();
+        const metadata = response.headers.get("X-Metadata");
+        const meta = metadata ? JSON.parse(metadata) : null;
+
+        if (meta) {
+          resultBox.style.display = "block";
+          resultBox.innerHTML = `
+            <strong>✅ Merged Successfully!</strong><br><br>
+            <b>Files Processed:</b><br>${meta.files.join("<br>")}<br><br>
+            <b>Rows per File:</b><br>${meta.rows.join("<br>")}<br><br>
+            <b>Total Rows:</b> ${meta.total_rows}<br>
+            <b>Total Columns:</b> ${meta.total_cols}
+          `;
+        }
+
+        // Trigger download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `merged_feedspot.${downloadType === "excel" ? "xlsx" : "csv"}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        clearInterval(fakeProgress);
+        progressText.textContent = "❌ Error: " + err.message;
+      }
+    });
+  </script>
 </body>
 </html>
