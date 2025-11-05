@@ -101,7 +101,7 @@ def merge_files():
         response = send_file(
             output,
             as_attachment=True,
-            download_name="Merged_Feedspot.xlsx",
+            download_name="merged_feedspot.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     elif download_type == 'csv':
@@ -111,7 +111,7 @@ def merge_files():
         response = send_file(
             mem,
             as_attachment=True,
-            download_name="Merged_Feedspot.csv",
+            download_name="merged_feedspot.csv",
             mimetype="text/csv"
         )
     else:
