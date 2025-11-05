@@ -4,6 +4,7 @@ import os
 from io import BytesIO, StringIO
 import json
 from pandas import ExcelWriter
+import tempfile
 
 app = Flask(__name__)
 
@@ -95,17 +96,20 @@ def merge_files():
     download_type = request.form.get('download_type')
     metadata_json = json.dumps(meta)
 
+
     if download_type == 'excel':
-        output = BytesIO()
-        with ExcelWriter(output, engine='openpyxl') as writer:
-            merged_df.to_excel(writer, index=False, sheet_name='Merged_Data')
-        output.seek(0)
-        response = send_file(
-            output,
-            as_attachment=True,
-            download_name="merged_feedspot.xlsx",
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            with pd.ExcelWriter(tmp.name, engine='openpyxl') as writer:
+                merged_df.to_excel(writer, index=False, sheet_name='Merged_Data')
+            tmp.flush()
+            tmp.seek(0)
+
+            response = send_file(
+                tmp.name,
+                as_attachment=True,
+                download_name="merged_feedspot.xlsx",
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
     elif download_type == 'csv':
         output = StringIO()
         merged_df.to_csv(output, index=False)
